@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>猜数字游戏</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f4f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    h1 { font-size: 24px; font-weight: 600; margin-bottom: 4px; color: #1a1a1a; }
+    .subtitle { font-size: 14px; color: #888; margin-bottom: 1.5rem; }
+
+    .hint-box {
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 15px;
+      margin-bottom: 1.5rem;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f5f4f0;
+      color: #666;
+      transition: background 0.3s, color 0.3s;
+    }
+    .hint-box.too-low  { background: #e8f0fe; color: #1a56db; }
+    .hint-box.too-high { background: #fef3c7; color: #92400e; }
+    .hint-box.correct  { background: #d1fae5; color: #065f46; }
+    .hint-box.error    { background: #fee2e2; color: #991b1b; }
+
+    .stats {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+    .stat {
+      flex: 1;
+      background: #f5f4f0;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+    }
+    .stat-label { font-size: 11px; color: #999; margin-bottom: 2px; }
+    .stat-value { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+
+    .range-track {
+      height: 6px;
+      background: #e5e5e5;
+      border-radius: 3px;
+      margin-bottom: 4px;
+      overflow: hidden;
+    }
+    .range-fill {
+      height: 100%;
+      background: #6366f1;
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+    .range-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 1.25rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
+    input[type=number] {
+      flex: 1;
+      font-size: 18px;
+      text-align: center;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 10px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type=number]:focus { border-color: #6366f1; }
+    input[type=number]:disabled { background: #f9f9f9; color: #bbb; }
+    button {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover { background: #4f46e5; }
+    button:active { transform: scale(0.97); }
+    button:disabled { background: #d1d5db; cursor: default; }
+
+    .history {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 1rem;
+      min-height: 28px;
+    }
+    .tag {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+    .tag.low     { background: #e8f0fe; color: #1a56db; }
+    .tag.high    { background: #fef3c7; color: #92400e; }
+    .tag.correct { background: #d1fae5; color: #065f46; font-weight: 600; }
+
+    .restart-btn {
+      width: 100%;
+      background: transparent;
+      color: #6366f1;
+      border: 1.5px solid #6366f1;
+      margin-top: 0.5rem;
+      font-size: 14px;
+    }
+    .restart-btn:hover { background: #eef2ff; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>🎮 猜数字</h1>
+  <p class="subtitle">我想好了一个 1 到 100 之间的数字，你能猜到吗？</p>
+
+  <div class="hint-box" id="hint-box">💡 输入你的猜测，然后点击猜！</div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">已猜次数</div>
+      <div class="stat-value" id="tries">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">范围下限</div>
+      <div class="stat-value" id="low-val">1</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">范围上限</div>
+      <div class="stat-value" id="high-val">100</div>
+    </div>
+  </div>
+
+  <div class="range-track">
+    <div class="range-fill" id="range-fill" style="width:100%"></div>
+  </div>
+  <div class="range-labels">
+    <span id="label-low">1</span>
+    <span id="label-high">100</span>
+  </div>
+
+  <div class="input-row">
+    <input type="number" id="guess-input" min="1" max="100" placeholder="1 – 100" />
+    <button id="guess-btn" onclick="makeGuess()">猜！</button>
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <button class="restart-btn" onclick="restartGame()">🔄 重新开始</button>
+</div>
+
+<script>
+  let secret, tries, low, high, done;
+
+  function init() {
+    secret = Math.floor(Math.random() * 100) + 1;
+    tries = 0; low = 1; high = 100; done = false;
+    document.getElementById('tries').textContent = 0;
+    document.getElementById('low-val').textContent = 1;
+    document.getElementById('high-val').textContent = 100;
+    document.getElementById('label-low').textContent = 1;
+    document.getElementById('label-high').textContent = 100;
+    document.getElementById('range-fill').style.width = '100%';
+    document.getElementById('history').innerHTML = '';
+    document.getElementById('guess-input').value = '';
+    document.getElementById('guess-input').disabled = false;
+    document.getElementById('guess-btn').disabled = false;
+    setHint('', '💡 输入你的猜测，然后点击猜！');
+  }
+
+  function setHint(cls, text) {
+    const box = document.getElementById('hint-box');
+    box.className = 'hint-box' + (cls ? ' ' + cls : '');
+    box.textContent = text;
+  }
+
+  function updateRange() {
+    const pct = Math.round(((high - low) / 99) * 100);
+    document.getElementById('range-fill').style.width = pct + '%';
+    document.getElementById('low-val').textContent = low;
+    document.getElementById('high-val').textContent = high;
+    document.getElementById('label-low').textContent = low;
+    document.getElementById('label-high').textContent = high;
+  }
+
+  function addTag(num, type) {
+    const tag = document.createElement('span');
+    tag.className = 'tag ' + type;
+    const arrow = type === 'low' ? '↑' : type === 'high' ? '↓' : '✓';
+    tag.textContent = num + ' ' + arrow;
+    document.getElementById('history').appendChild(tag);
+  }
+
+  function makeGuess() {
+    if (done) return;
+    const input = document.getElementById('guess-input');
+    const val = parseInt(input.value);
+    if (isNaN(val) || val < 1 || val > 100) {
+      setHint('error', '⚠️ 请输入 1 到 100 之间的数字！');
+      return;
+    }
+    tries++;
+    document.getElementById('tries').textContent = tries;
+    input.value = '';
+
+    if (val < secret) {
+      low = Math.max(low, val + 1);
+      updateRange();
+      addTag(val, 'low');
+      setHint('too-low', '⬆️ ' + val + ' 太小了，再大一点！');
+    } else if (val > secret) {
+      high = Math.min(high, val - 1);
+      updateRange();
+      addTag(val, 'high');
+      setHint('too-high', '⬇️ ' + val + ' 太大了，再小一点！');
+    } else {
+      done = true;
+      addTag(val, 'correct');
+      document.getElementById('guess-input').disabled = true;
+      document.getElementById('guess-btn').disabled = true;
+      const medal = tries <= 5 ? '🏆 你太厉害了！' : tries <= 7 ? '🎉 猜得不错！' : '😅 终于猜到了！';
+      setHint('correct', '✅ 答对了！数字就是 ' + secret + '，你用了 ' + tries + ' 次。' + medal);
+    }
+    input.focus();
+  }
+
+  document.getElementById('guess-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') makeGuess();
+  });
+
+  init();
+</script>
+</body>
+</html>
